@@ -1,0 +1,174 @@
+﻿{% extends 'base.html' %} {% block content %}
+
+<script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
+
+<div class="main-container">
+
+    <div class="members-sidebar">
+        <h3>Participants</h3>
+        <div id="members-list"></div>
+    </div>
+
+    <div class="message-box" style="position: relative;">
+        <h2>
+            <span class="chat-label">Chat Room:</span>
+            <span class="chat-code" id="roomCodeDisplay" onclick="copyLink()" title="Click to copy invite link" style="cursor: pointer; text-decoration: underline;">
+                {{code}}
+            </span>
+        </h2>
+
+        <div class="messages" id="messages"></div>
+
+        <div class="emoji-popup" id="emoji-popup" style="display: none;">
+            <emoji-picker class="dark"></emoji-picker>
+        </div>
+
+        <div class="inputs">
+            <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="sendImage()" />
+
+            <button type="button" id="upload-btn" onclick="document.getElementById('imageInput').click()" style="background-color: transparent; border: none; cursor: pointer; font-size: 1.5em;" title="Send Image">
+                📷
+            </button>
+
+            <button type="button" id="emoji-btn" onclick="toggleEmoji()" style="background-color: transparent; border: none; cursor: pointer; font-size: 1.5em;" title="Insert Emoji">
+                😀
+            </button>
+
+            <input type="text" rows="3" placeholder="Message" name="message" id="message" autocomplete="off" />
+
+            <button type="button" name="send" id="send-btn" onClick="sendMessage()">
+                Send
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="snackbar">Code copied to clipboard!</div>
+
+<script type="text/javascript">
+    var socketio = io();
+    const messages = document.getElementById("messages");
+    const membersListDiv = document.getElementById("members-list");
+
+    function toggleEmoji() {
+        const popup = document.getElementById("emoji-popup");
+        if (popup.style.display === "none") {
+            popup.style.display = "block";
+        } else {
+            popup.style.display = "none";
+        }
+    }
+
+    document.querySelector('emoji-picker').addEventListener('emoji-click', event => {
+        const input = document.getElementById("message");
+        input.value += event.detail.unicode;
+        input.focus();
+    });
+
+    document.addEventListener('click', function(event) {
+        const popup = document.getElementById("emoji-popup");
+        const btn = document.getElementById("emoji-btn");
+        const picker = document.querySelector('emoji-picker');
+
+        if (!popup.contains(event.target) && !btn.contains(event.target)) {
+            popup.style.display = 'none';
+        }
+    });
+
+    socketio.on("update_members", (data) => {
+        const members = data.members;
+        membersListDiv.innerHTML = "";
+
+        members.forEach(member => {
+            const item = `
+                <div class="member-item">
+                    <div class="member-dot" style="background-color: ${member.color};"></div>
+                    <span>${member.name}</span>
+                </div>
+            `;
+            membersListDiv.innerHTML += item;
+        });
+    });
+
+    function copyLink() {
+        const domain = window.location.origin;
+        const code = "{{code}}";
+        const link = `${domain}/home?code=${code}`;
+
+        navigator.clipboard.writeText(link).then(() => {
+            var x = document.getElementById("snackbar");
+            x.innerText = "Link copied! Send it to your friends.";
+            x.className = "show";
+            setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
+        });
+    }
+
+    const createMessage = (name, msg, timestamp, color, type) => {
+        let messageContent = "";
+
+        if (type === "image") {
+            messageContent = `<img src="${msg}" style="max-width: 200px; border-radius: 10px; margin-top: 5px;">`;
+        } else {
+            messageContent = `<span class="message-text" style="margin-top: 5px;">${msg}</span>`;
+        }
+
+        const content = `
+        <div class="text">
+            <div class="msg-header" style="display: flex; align-items: center; gap: 10px;">
+                <span class="name" style="color: ${color}"><strong>${name}</strong></span>
+                <span class="muted" style="font-size: 0.8em;">${timestamp}</span>
+            </div>
+            ${messageContent}
+        </div>
+        `;
+        messages.innerHTML += content;
+        messages.scrollTop = messages.scrollHeight;
+    };
+
+    socketio.on("message", (data) => {
+        createMessage(data.name, data.message, data.timestamp, data.color, data.type);
+    });
+
+    const sendMessage = () => {
+        const message = document.getElementById("message");
+        if (message.value == "") return;
+        socketio.emit("message", { data: message.value, type: "text" });
+        message.value = "";
+        document.getElementById("emoji-popup").style.display = "none";
+    };
+
+    const sendImage = () => {
+        const fileInput = document.getElementById("imageInput");
+        const file = fileInput.files[0];
+
+        if (file) {
+            if (file.size > 1000000) {
+                alert("File is too big! Please select an image under 1MB.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const base64Image = e.target.result;
+                socketio.emit("message", { data: base64Image, type: "image" });
+            };
+            reader.readAsDataURL(file);
+        }
+        fileInput.value = "";
+    };
+
+    document.getElementById("message").addEventListener("keydown", function (event) {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    });
+</script>
+
+{% for msg in messages %}
+<script type="text/javascript">
+    createMessage("{{msg.name}}", "{{msg.message}}", "{{msg.timestamp}}", "{{msg.color}}", "{{msg.type}}");
+</script>
+{% endfor %}
+
+{% endblock %}

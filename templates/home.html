@@ -1,0 +1,91 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+
+<div style="text-align: right; padding: 10px;">
+    <a href="{{url_for('logout')}}" style="color: #ccccff; text-decoration: none; border: 1px solid white; padding: 5px 10px;">Logout</a>
+</div>
+
+<form method="post" class="buttons">
+    <h1>Hello, {{ name }}!</h1>
+    <h3>Choose your color & Enter a room</h3>
+
+    <div class="color-picker-wrapper">
+        <span style="color: #ccccff;">My Color:</span>
+
+        <div id="selectedColorDisplay" class="color-display-btn" style="background-color: #FF5733;" onclick="toggleColorMenu()"></div>
+
+        <input type="hidden" name="color" id="colorInput" value="#FF5733">
+
+        <div id="colorMenu" class="color-options-dropdown">
+            <div class="color-option" style="background-color: #FF5733;" onclick="selectColor('#FF5733')"></div>
+            <div class="color-option" style="background-color: #33FF57;" onclick="selectColor('#33FF57')"></div>
+            <div class="color-option" style="background-color: #3357FF;" onclick="selectColor('#3357FF')"></div>
+            <div class="color-option" style="background-color: #F033FF;" onclick="selectColor('#F033FF')"></div>
+            <div class="color-option" style="background-color: #FFFF33;" onclick="selectColor('#FFFF33')"></div>
+            <div class="color-option" style="background-color: #00FFFF;" onclick="selectColor('#00FFFF')"></div>
+            <div class="color-option" style="background-color: #FF33A8;" onclick="selectColor('#FF33A8')"></div>
+            <div class="color-option" style="background-color: #FFA500;" onclick="selectColor('#FFA500')"></div>
+            <div class="color-option" style="background-color: #000000;" onclick="selectColor('#000000')"></div>
+            <div class="color-option" style="background-color: #FFFFFF;" onclick="selectColor('#FFFFFF')"></div>
+        </div>
+    </div>
+
+    <div class="join">
+        <input type="text" placeholder="Room Code" name="code" value="{{code}}" />
+        <button type="submit" name="join">Join a Room</button>
+    </div>
+
+    <button type="submit" name="create" class="create-btn">Create a Room</button>
+
+    {% if error %}
+    <div class="error-msg" style="margin-top: 10px;">
+        ⚠️ {{ error }}
+    </div>
+    {% endif %}
+</form>
+
+<script>
+    function toggleColorMenu() {
+        const menu = document.getElementById("colorMenu");
+        menu.classList.toggle("show-dropdown");
+    }
+
+    function selectColor(colorCode) {
+        document.getElementById("colorInput").value = colorCode;
+
+        document.getElementById("selectedColorDisplay").style.backgroundColor = colorCode;
+
+        document.getElementById("colorMenu").classList.remove("show-dropdown");
+    }
+
+    window.onclick = function(event) {
+        if (!event.target.matches('.color-display-btn')) {
+            var dropdowns = document.getElementsByClassName("color-options-dropdown");
+            for (var i = 0; i < dropdowns.length; i++) {
+                var openDropdown = dropdowns[i];
+                if (openDropdown.classList.contains('show-dropdown')) {
+                    openDropdown.classList.remove('show-dropdown');
+                }
+            }
+        }
+    }
+</script>
+
+<script>
+    window.onload = function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const codeFromUrl = urlParams.get('code');
+
+        if (codeFromUrl) {
+            const codeInput = document.querySelector('input[name="code"]');
+            if (codeInput) {
+                codeInput.value = codeFromUrl;
+                codeInput.style.borderColor = "#33FF57";
+            }
+        }
+    };
+
+</script>
+
+
+{% endblock %}
